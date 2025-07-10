@@ -5,7 +5,7 @@ This project implements a complete 8-bit CPU from scratch on the Tang Nano 9K FP
 ## Features
 
 - **Custom Instruction Set Architecture (ISA)**
-  - Supports MOV, arithmetic/logical operations, jumps, and memory-mapped I/O instructions.
+  - Supports MOV, arithmetic/logical operations, jumps, and I/O instructions.
   - Simple 8-bit instruction format for clarity and compactness.
 
 - **Modular Verilog Design**
@@ -13,6 +13,7 @@ This project implements a complete 8-bit CPU from scratch on the Tang Nano 9K FP
   - Register file with 4 general-purpose registers (A, B, C, D)
   - Instruction decoder and control unit implemented using FSMs
   - Program counter, RAM access, and memory-mapped LCD output
+  - Flash reader module to use a TF-card as ROM
 
 - **Memory-Mapped LCD Output**
   - Sends character data to an HD44780-compatible LCD screen
