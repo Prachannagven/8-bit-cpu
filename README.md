@@ -23,7 +23,7 @@ This project implements a complete 8-bit CPU from scratch on the Tang Nano 9K FP
   - Translates human-readable assembly to machine code matching the ISA
   - Automates binary generation for program ROM initialization
 
-## 🧠 Instruction Set Summary
+## Instruction Set Summary
 
 | Instruction       | Description                                      |
 |-------------------|--------------------------------------------------|
@@ -39,7 +39,7 @@ This project implements a complete 8-bit CPU from scratch on the Tang Nano 9K FP
 | `NOP`              | No operation                                     |
 | `HLT`              | Halt CPU execution                               |
 
-## 📦 Project Structure
+## Project Structure
 
 ```bash
 cpu_project/
@@ -62,3 +62,15 @@ cpu_project/
 ├── Makefile                # For compilation and synthesis
 └── README.md
 ```
+
+## Hardware Requirements
+
+The entire setup requires:
+- Tang Nano 9k FPGA board
+- HD44780-compatible LCD
+- A 1MB flash storage microsd card
+
+
+## Learning Outcomes
+- Understood the fetch-decode-retrieve-execute pipeline to run a CPU.
+- Designed how to build an ISA, Assembler and a decoder
