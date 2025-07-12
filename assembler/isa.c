@@ -298,6 +298,9 @@ int assemble(const char *filename, const char *output){
                 printf("Invalid use of WAIT command at line %d. Valid usage: \n \t WAIT 0x1234", LINE_NUM);
             }
 
+        }
+        else{
+            printf("Invalid Command Detected. Skipping line %d", LINE_NUM);
         } 
         fwrite(bytes, 1, len, fout);
         LINE_NUM ++;
