@@ -20,8 +20,8 @@ module flashNav #(
     reg [23:0] readAddress = 0;                     //Address we want to read from the flash
     reg [7:0] command = 8'h03;                      //Command we want to send to the flash ic
     reg [7:0] currentByteOut = 0;                   //We want to know the current byte that's coming from flash as a buffer kind of
-    reg [7:0] currentByteNum = 0;                   //Gives us which byte is currently being used
-    reg [255:0] dataIn = 0;                         //Buffer to hold a read operation of 32 bytes
+    reg [8:0] currentByteNum = 0;                   //Gives us which byte is currently being used
+    reg [4095:0] dataIn = 0;                         //Buffer to hold a read operation of 32 bytes
     reg [255:0] dataInBuffer = 0;                   //Buffer to hold another read operation of 32 bytes
 
     //defining the various states for our FSM
