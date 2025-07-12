@@ -1,18 +1,14 @@
-MOV A, B
-MOV C, [0x40]
-MOV [0x40], D
-MOV D, 0xFF
-MOV A, B
-MOV C, [0x40]
-MOV [0x40], D
-MOV D, 0xFF
+AND C, B
+OR A, D
+XOR C, B
+NOT D
+ADD A, B
 
 
-MOV A, B
-MOV C, [0x40]
-MOV [0x40], D
-MOV D, 0xFF
-MOV A, B
-MOV C, [0x40]
-MOV [0x40], D
-MOV D, 0xFF
+SUB E, D
+INC D
+
+
+
+
+DEC B, C
