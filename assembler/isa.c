@@ -26,6 +26,9 @@ const uint8_t ALU_CMD_ADD = 0xC0;       //ADD A, B
 const uint8_t ALU_CMD_SUB = 0xD0;       //SUB A, B
 const uint8_t ALU_CMD_INC = 0xE0;       //INC A, B
 const uint8_t ALU_CMD_DEC = 0xF0;       //DEC A, B
+const uint8_t HLT         = 0x70;       //HLT
+const uint8_t NOP         = 0x6F;       //NOP
+const uint8_t WAIT        = 0x7F;       //WAIT
 //----- ENDING DEFINING OPCODES -----//
 
 uint16_t LINE_NUM = 1;                  //To allow me to print which line has the error in it
@@ -266,6 +269,35 @@ int assemble(const char *filename, const char *output){
             else{
                 printf("Invalid DEC syntax at line %d. Valid usage: \n \t DEC A \n", LINE_NUM);
             }            
+        }
+        //--------------------------END ALU COMMANDS---------------------------------//
+        //HLT
+        else if(strcmp(op, "HLT") == 0){
+            bytes[0] = HLT;
+            len = 1;
+            fwrite(bytes, 1, len, fout);
+            LINE_NUM ++;
+            printf("HLT command detected at line %d. Further lines not being read\n", LINE_NUM);
+            break;
+        }
+        //NOP
+        else if(strcmp(op, "NOP") == 0){
+            bytes[0] = NOP;
+            len = 1;
+        }
+        //WAIT
+        else if(strcmp(op, "WAIT") == 0){
+            if((arg1[0] == '0') && (arg1[1] == 'x') && (!arg2)){
+                uint16_t delay_amount = (uint16_t) strtol(arg1, NULL, 0);
+                bytes[0] = WAIT;
+                bytes[1] = (uint8_t) (delay_amount >> 8) & (0x00FF);
+                bytes[2] = (uint8_t) (delay_amount) & (0x00FF);
+                len = 3;
+            }
+            else{
+                printf("Invalid use of WAIT command at line %d. Valid usage: \n \t WAIT 0x1234", LINE_NUM);
+            }
+
         } 
         fwrite(bytes, 1, len, fout);
         LINE_NUM ++;

@@ -1,14 +1,3 @@
-AND C, B
-OR A, D
-XOR C, B
-NOT D
-ADD A, B
-
-
-SUB E, D
-INC D
-
-
-
-
-DEC B, C
+NOP
+WAIT 0x1243
+HLT
