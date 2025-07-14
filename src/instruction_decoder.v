@@ -22,20 +22,21 @@ module decoder (
     //From ALU
     input wire [7:0] res,
 
-    //To and From SRAM
-    inout wire [7:0] sram_data,
+    //From SRAM
+    input wire [7:0] sram_rd_data,
 
     //----- OUTPUTS FROM DECODER -----//
     //To Program Counter
-    output reg hlt,
+    output reg pc_hlt,
     output reg jmp_en,
     output reg [8:0] jmp_addr,
     output reg [1:0] instr_size,
 
     //To SRAM
     output reg [7:0] sram_addr,
-    output reg rd_en,
-    output reg wr_en,
+    output reg sram_rd_en,
+    output reg sram_wr_en,
+    output reg sram_wr_data
 
     //To LCD Driver
     output reg [7:0] lcd_data,
@@ -44,8 +45,9 @@ module decoder (
     output reg strt,
 
     //To Register Block
-    output reg [7:0] reg_data,
-    output reg [1:0] reg_addr,
+    output reg [7:0] reg_wr_data,
+    output reg [1:0] reg_wr_addr,
+    output reg reg_wr_en,
 
     //To ALU
     output reg [2:0] alu_inst,
@@ -53,157 +55,95 @@ module decoder (
     output reg [7:0] op_2
 );
 
-    // SRAM Tri-state control
-    reg [7:0] sram_data_out;
-    reg sram_drive;
-
-    assign sram_data = sram_drive ? sram_data_out : 8'bz;
-
     // FSM States
-    localparam STATE_FETCH     = 3'b000;
-    localparam STATE_DECODE    = 3'b001;
-    localparam STATE_WAIT_LCD  = 3'b010;
-    localparam STATE_HALT      = 3'b011;
+    localparam STATE_FETCH          = 4'b0000;
+    localparam STATE_FETCH_START    = 4'b0001;
+    localparam STATE_DECODE         = 4'b0011;
+    localparam STATE_RETRIEVE       = 4'b0100;
+    localparam STATE_RETRIEVE_START = 4'b0101;
+    localparam STATE_RETRIEVE_DONE  = 4'b0110;
+    localparam STATE_EXECUTE        = 4'b0111;
+    localparam STATE_HALT           = 4'b1000;
+    localparam STATE_WAIT           = 4'b1001;
+    localparam STATE_PRNT           = 4'b1010;
 
-    reg [2:0] state;
+    reg [3:0] state;
 
-    always @(posedge clk or posedge sys_rst) begin
+    reg [7:0] temp_sram_data = 8'b0;
+
+
+    always @(posedge clk) begin
         if (sys_rst) begin
-            state <= STATE_FETCH;
-            hlt <= 0;
-            jmp_en <= 0;
-            instr_size <= 1;
-        end else begin
+            pc_hlt <= 0;
+            state <= STATE_FETCH_START;
+        end
+        else begin
             case (state)
-                STATE_FETCH: begin
-                    // Reset control signals
-                    hlt <= 0;
-                    jmp_en <= 0;
-                    alu_inst <= 3'b000;
-                    instr_size <= 1;
-                    rd_en <= 0;
-                    wr_en <= 0;
-                    strt <= 0;
-                    sram_drive <= 0;
-
+                STATE_FETCH_START: begin
+                    pc_hlt <= 1;
+                    reg_wr_en <= 0;
+                    state <= STATE_FETCH_START;
+                end 
+                STATE_FETCH_DONE: begin
+                    pc_hlt <= 0;
                     state <= STATE_DECODE;
                 end
-
                 STATE_DECODE: begin
-                    case (instr_byte[7:4])
-                        4'b0000: begin // MOV R1, R2
-                            reg_addr <= instr_byte[3:2];
-                            case (instr_byte[1:0])
-                                2'b00: reg_data <= reg_a;
-                                2'b01: reg_data <= reg_b;
-                                2'b10: reg_data <= reg_c;
-                                2'b11: reg_data <= reg_d;
-                            endcase
-                            instr_size <= 1;
-                        end
-
-                        4'b0001: begin // MOV R, IMM
-                            reg_addr <= instr_byte[3:2];
-                            reg_data <= operand1;
-                            instr_size <= 2;
-                        end
-
-                        4'b0010: begin // MOV R, [ADDR]
-                            reg_addr <= instr_byte[3:2];
-                            sram_addr <= operand1;
-                            rd_en <= 1;
-                            instr_size <= 2;
-                        end
-
-                        4'b0011: begin // MOV [ADDR], R
-                            sram_addr <= operand1;
-                            case (instr_byte[3:2])
-                                2'b00: sram_data_out <= reg_a;
-                                2'b01: sram_data_out <= reg_b;
-                                2'b10: sram_data_out <= reg_c;
-                                2'b11: sram_data_out <= reg_d;
-                            endcase
-                            sram_drive <= 1;
-                            wr_en <= 1;
-                            instr_size <= 2;
-                        end
-
-                        4'b0100: begin // PRNT
-                            if (instr_byte[1:0] == 2'b00) begin // PRNT REG
-                                case (instr_byte[3:2])
-                                    2'b00: lcd_data <= reg_a;
-                                    2'b01: lcd_data <= reg_b;
-                                    2'b10: lcd_data <= reg_c;
-                                    2'b11: lcd_data <= reg_d;
-                                endcase
-                                strt <= 1;
-                                loc_req <= 1;
-                                data_loc <= reg_a;
-                                state <= STATE_WAIT_LCD;
-                            end else begin // PRNT [ADDR]
-                                sram_addr <= operand1;
-                                rd_en <= 1;
-                                loc_req <= 1;
-                                data_loc <= reg_a;
-                                strt <= 1;
-                                state <= STATE_WAIT_LCD;
-                            end
-                            instr_size <= 2;
-                        end
-
-                        4'b0101: begin // Jumps
-                            jmp_addr <= operand1;
-                            instr_size <= 2;
-                            case (instr_byte[3:0])
-                                4'b0000: jmp_en <= 1;                      // JMP
-                                4'b0001: jmp_en <= reg_flags[0];          // JZ
-                                4'b0010: jmp_en <= ~reg_flags[0];         // JNZ
-                                4'b0011: jmp_en <= reg_flags[1];          // JOV
-                            endcase
-                        end
-
-                        4'b0110: begin
-                            instr_size <= 1; // NOP
-                        end
-
-                        4'b0111: begin
-                            if (instr_byte[3:0] == 4'b0000)
-                                hlt <= 1; // HLT
-                            else if (instr_byte[3:0] == 4'b1111)
-                                instr_size <= 3; // WAIT
-                        end
-
-                        4'b1000: begin // AND R1, R2
-                            alu_inst <= 3'b000;
-                            op_1 <= (instr_byte[3:2] == 2'b00) ? reg_a :
-                                    (instr_byte[3:2] == 2'b01) ? reg_b :
-                                    (instr_byte[3:2] == 2'b10) ? reg_c : reg_d;
-                            op_2 <= (instr_byte[1:0] == 2'b00) ? reg_a :
-                                    (instr_byte[1:0] == 2'b01) ? reg_b :
-                                    (instr_byte[1:0] == 2'b10) ? reg_c : reg_d;
-                            reg_addr <= instr_byte[3:2];
-                            reg_data <= res;
-                            instr_size <= 1;
-                        end
-
-                        // TODO: Add other ALU operations like OR, XOR, ADD, SUB, etc.
-
-                    endcase
-                    state <= STATE_FETCH;
-                end
-
-                STATE_WAIT_LCD: begin
-                    if (lcd_done) begin
-                        strt <= 0;
-                        state <= STATE_FETCH;
+                    if(instr_byte[7:4] == 8'b0010) begin
+                        state <= STATE_RETRIEVE;
+                    end
+                    else begin
+                        state <= STATE_EXECUTE;
                     end
                 end
-
-                STATE_HALT: begin
-                    hlt <= 1;
+                STATE_RETRIEVE: begin
+                    sram_addr <= operand1;
+                    state <= STATE_RETRIEVE_START;
                 end
+                STATE_RETRIEVE_START: begin
+                    sram_rd_en <= 1;
+                    temp_sram_data <=sram_rd_data;
+                    state <= STATE_RETRIEVE_DONE;
+                end
+                STATE_RETRIEVE_DONE: begin
+                    sram_rd_en <= 0;
+                    state <= STATE_EXECUTE
+                end
+                STATE_EXECUTE: begin
+                    case (instr_byte[7:4])
+                        //MOV R1, R2
+                        4'b0000: begin
+                            reg_wr_en <= 1;
+                            reg_wr_addr <= instr_byte[3:2];
+                            case (instr_byte[1:0])
+                                2'b00 : reg_wr_data <= reg_a;
+                                2'b01 : reg_wr_data <= reg_b;
+                                2'b10 : reg_wr_data <= reg_c;
+                                2'b11 : reg_wr_data <= reg_d;
+                                default: 
+                            endcase
+                        end 
+                        //MOV R, IMM
+                        4'b0001: begin
+                            reg_wr_addr <= instr_byte[3:2];
+                            reg_wr_data <= operand1;
+                            reg_wr_en <= 1;
+                        end
+                        //MOV R, [ADDR]
+                        4'b0010: begin
+                            reg_wr_addr <= instr_byte[3:2];
+                            reg_wr_data <= temp_sram_data;
+                            reg_wr_en <= 1;
+                        end
+                        default: 
+                    endcase
+                end
+
+                default: 
             endcase
         end
     end
+
+    
 
 endmodule
