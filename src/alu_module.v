@@ -2,8 +2,8 @@ module alu (
     //Inputs to the ALU
     input wire [7:0] a,     //Operand 1
     input wire [7:0] b,     //Operand 2
-    input wire [3:0] op,    //Operation Code. Each number corresponds to a different op.
-    input wire c_in,        //Carry in bit
+    input wire [2:0] op,    //Operation Code. Each number corresponds to a different op.
+    input wire rst,         //System Reset
 
     //Outputs from the ALU
     output reg [7:0] res,   //Result
@@ -15,17 +15,21 @@ module alu (
     reg [8:0] temp;          //To catch the carry bit, adding one extra
 
     always @(*) begin
+        if(rst) begin
+            res <= 8'b0;
+            c_out <= 1'b0;
+            zero <= 1'b0;
+            ovf <= 1'b0;
+        end
         case (op)
-            4'b0000: temp = a & b;      //AND
-            4'b0001: temp = a | b;      //OR
-            4'b0010: temp = a ^ b;      //XOR
-            4'b0011: temp = ~a;         //INV
-            4'b0100: temp = a + b;      //ADD
-            4'b0101: temp = a - b;      //SUB
-            4'b0110: temp = a + 8'b1;   //INC
-            4'b0111: temp = a - 8'b1;   //DEC
-            4'b1000: temp = b;          //MOV
-            4'b1001: temp = a;          //NOP
+            3'b000: temp = a & b;      //AND
+            3'b001: temp = a | b;      //OR
+            3'b010: temp = a ^ b;      //XOR
+            3'b011: temp = ~a;         //INV
+            3'b100: temp = a + b;      //ADD
+            3'b101: temp = a - b;      //SUB
+            3'b110: temp = a + 8'b1;   //INC
+            3'b111: temp = a - 8'b1;   //DEC
             default: temp = 9'b0;       //Setting to 0 otherwise
         endcase
 

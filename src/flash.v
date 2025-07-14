@@ -5,7 +5,6 @@ module flashNav #(
     //Inputs from system or CPU
     input clk,                              //Input 27MHz Clock
     input wire flash_MISO,                  //SPI Data in from the flash chip to the tang nano
-    input wire [5:0] char_addr,             //Apparently used to interface with the text engine
     input btn1,                             //To allow for reset and start
     input btn2,
 
@@ -13,6 +12,7 @@ module flashNav #(
     output reg flash_MOSI = 0,              //SPI data out from the tang nano to the flash chip
     output reg flash_clk = 0,               //The SPI clock
     output reg flash_cs = 0,                //Chip select for the chip
+    input wire [5:0] char_addr,             //Apparently used to interface with the text engine
     output reg [7:0] char_output = 0        //The character in ASCII fromat to displayed at char_adr
 );
     

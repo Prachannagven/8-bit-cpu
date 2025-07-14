@@ -1,0 +1,261 @@
+$date
+	Sun Jul 13 21:22:56 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ns
+$end
+$scope module decoder_tb $end
+$var wire 8 ! sram_data [7:0] $end
+$var wire 1 " wr_en $end
+$var wire 1 # strt $end
+$var wire 8 $ sram_addr [7:0] $end
+$var wire 8 % reg_data [7:0] $end
+$var wire 2 & reg_addr [1:0] $end
+$var wire 1 ' rd_en $end
+$var wire 8 ( op_2 [7:0] $end
+$var wire 8 ) op_1 [7:0] $end
+$var wire 1 * loc_req $end
+$var wire 8 + lcd_data [7:0] $end
+$var wire 1 , jmp_en $end
+$var wire 9 - jmp_addr [8:0] $end
+$var wire 2 . instr_size [1:0] $end
+$var wire 1 / hlt $end
+$var wire 8 0 data_loc [7:0] $end
+$var wire 3 1 alu_inst [2:0] $end
+$var reg 1 2 clk $end
+$var reg 8 3 instr_byte [7:0] $end
+$var reg 1 4 lcd_done $end
+$var reg 8 5 operand1 [7:0] $end
+$var reg 8 6 operand2 [7:0] $end
+$var reg 8 7 reg_a [7:0] $end
+$var reg 8 8 reg_b [7:0] $end
+$var reg 8 9 reg_c [7:0] $end
+$var reg 8 : reg_d [7:0] $end
+$var reg 8 ; reg_flags [7:0] $end
+$var reg 8 < res [7:0] $end
+$var reg 1 = sys_rst $end
+$scope module uut $end
+$var wire 1 2 clk $end
+$var wire 8 > instr_byte [7:0] $end
+$var wire 1 4 lcd_done $end
+$var wire 8 ? operand1 [7:0] $end
+$var wire 8 @ operand2 [7:0] $end
+$var wire 8 A reg_a [7:0] $end
+$var wire 8 B reg_b [7:0] $end
+$var wire 8 C reg_c [7:0] $end
+$var wire 8 D reg_d [7:0] $end
+$var wire 8 E reg_flags [7:0] $end
+$var wire 8 F res [7:0] $end
+$var wire 8 G sram_data [7:0] $end
+$var wire 1 = sys_rst $end
+$var parameter 3 H STATE_DECODE $end
+$var parameter 3 I STATE_FETCH $end
+$var parameter 3 J STATE_HALT $end
+$var parameter 3 K STATE_WAIT_LCD $end
+$var reg 3 L alu_inst [2:0] $end
+$var reg 8 M data_loc [7:0] $end
+$var reg 1 / hlt $end
+$var reg 2 N instr_size [1:0] $end
+$var reg 9 O jmp_addr [8:0] $end
+$var reg 1 , jmp_en $end
+$var reg 8 P lcd_data [7:0] $end
+$var reg 1 * loc_req $end
+$var reg 8 Q op_1 [7:0] $end
+$var reg 8 R op_2 [7:0] $end
+$var reg 1 ' rd_en $end
+$var reg 2 S reg_addr [1:0] $end
+$var reg 8 T reg_data [7:0] $end
+$var reg 8 U sram_addr [7:0] $end
+$var reg 8 V sram_data_out [7:0] $end
+$var reg 1 W sram_drive $end
+$var reg 3 X state [2:0] $end
+$var reg 1 # strt $end
+$var reg 1 " wr_en $end
+$upscope $end
+$scope task check $end
+$var reg 1 Y condition $end
+$var reg 256 Z testname [256:1] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b10 K
+b11 J
+b0 I
+b1 H
+$end
+#0
+$dumpvars
+bx Z
+xY
+b0 X
+xW
+bx V
+bx U
+bx T
+bx S
+bx R
+bx Q
+bx P
+bx O
+b1 N
+bx M
+bx L
+bx G
+b10101010 F
+b0 E
+b1000100 D
+b110011 C
+b100010 B
+b10001 A
+b0 @
+b0 ?
+b0 >
+1=
+b10101010 <
+b0 ;
+b1000100 :
+b110011 9
+b100010 8
+b10001 7
+b0 6
+b0 5
+04
+b0 3
+02
+bx 1
+bx 0
+0/
+b1 .
+bx -
+0,
+bx +
+x*
+bx )
+bx (
+x'
+bx &
+bx %
+bx $
+x#
+x"
+bx !
+$end
+#5
+12
+#10
+02
+b1000010 5
+b1000010 ?
+b10000 3
+b10000 >
+0=
+#15
+b1010101 !
+b1010101 G
+b1 X
+0W
+0#
+0"
+0'
+b0 1
+b0 L
+12
+#20
+02
+#25
+b0 X
+b10 .
+b10 N
+b1000010 %
+b1000010 T
+b0 &
+b0 S
+12
+#30
+02
+#35
+b1 X
+b1 .
+b1 N
+12
+#40
+02
+#45
+b0 X
+b10 .
+b10 N
+12
+#50
+02
+#55
+b1 X
+b1 .
+b1 N
+12
+#60
+02
+b110 3
+b110 >
+0Y
+b1001101010011110101011000100000010000010010110000100000010010010100110101001101 Z
+#65
+b0 X
+b110011 %
+b110011 T
+b1 &
+b1 S
+12
+#70
+02
+#75
+b1 X
+12
+#80
+02
+b1110000 3
+b1110000 >
+1Y
+b100110101001111010101100010000001000010001011000010000001000011 Z
+#85
+b0 X
+1/
+12
+#90
+02
+#95
+b1 X
+0/
+12
+#100
+02
+b1000000 3
+b1000000 >
+0Y
+b10010000100110001010100001000000100100101101110011100110111010001110010011101010110001101110100011010010110111101101110 Z
+#105
+b10 .
+b10 N
+b0 X
+b10001 0
+b10001 M
+1*
+1#
+b10001 +
+b10001 P
+12
+#110
+02
+#115
+b1 X
+0#
+b1 .
+b1 N
+12
+#120
+02
+b10100000101001001001110010101000010000001000001 Z
