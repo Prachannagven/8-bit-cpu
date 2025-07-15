@@ -1,5 +1,5 @@
 $date
-	Tue Jul 15 14:16:32 2025
+	Tue Jul 15 14:44:05 2025
 $end
 $version
 	Icarus Verilog
@@ -59,29 +59,30 @@ $var parameter 3 K STATE_EXECUTE_START $end
 $var parameter 3 L STATE_FETCH $end
 $var parameter 3 M STATE_INIT $end
 $var parameter 3 N STATE_RETRIEVE $end
-$var reg 3 O alu_inst [2:0] $end
-$var reg 8 P data_loc [7:0] $end
-$var reg 2 Q instr_size [1:0] $end
-$var reg 9 R jmp_addr [8:0] $end
+$var reg 1 O alu_en $end
+$var reg 3 P alu_inst [2:0] $end
+$var reg 8 Q data_loc [7:0] $end
+$var reg 2 R instr_size [1:0] $end
+$var reg 9 S jmp_addr [8:0] $end
 $var reg 1 , jmp_en $end
-$var reg 8 S lcd_data [7:0] $end
-$var reg 1 T loc_req $end
-$var reg 8 U op_1 [7:0] $end
-$var reg 8 V op_2 [7:0] $end
+$var reg 8 T lcd_data [7:0] $end
+$var reg 1 U loc_req $end
+$var reg 8 V op_1 [7:0] $end
+$var reg 8 W op_2 [7:0] $end
 $var reg 1 ( pc_hlt $end
-$var reg 2 W reg_wr_addr [1:0] $end
-$var reg 8 X reg_wr_data [7:0] $end
+$var reg 2 X reg_wr_addr [1:0] $end
+$var reg 8 Y reg_wr_data [7:0] $end
 $var reg 1 % reg_wr_en $end
-$var reg 8 Y sram_addr [7:0] $end
+$var reg 8 Z sram_addr [7:0] $end
 $var reg 1 # sram_rd_en $end
-$var reg 8 Z sram_wr_data [7:0] $end
+$var reg 8 [ sram_wr_data [7:0] $end
 $var reg 1 ! sram_wr_en $end
-$var reg 3 [ state [2:0] $end
-$var reg 1 \ strt $end
+$var reg 3 \ state [2:0] $end
+$var reg 1 ] strt $end
 $upscope $end
 $scope task check $end
-$var reg 1 ] condition $end
-$var reg 1024 ^ name [1023:0] $end
+$var reg 1 ^ condition $end
+$var reg 1024 _ name [1023:0] $end
 $upscope $end
 $upscope $end
 $enddefinitions $end
@@ -96,22 +97,23 @@ b11 I
 $end
 #0
 $dumpvars
-bx ^
+bx _
+x^
 x]
-x\
-b0 [
+b0 \
+bx [
 bx Z
 bx Y
 bx X
 bx W
 bx V
-bx U
-xT
+xU
+bx T
 bx S
-bx R
-b1 Q
+b1 R
+bx Q
 bx P
-bx O
+xO
 b0 H
 b10101010 G
 b0 F
@@ -163,46 +165,46 @@ b1 ?
 #26
 01
 #39
-b1 [
+b1 \
 11
 #45
 06
 #52
 01
 #65
-b11 [
+b11 \
 11
 #78
 01
 #91
-b100 [
+b100 \
 b100010 &
-b100010 X
+b100010 Y
 b0 '
-b0 W
+b0 X
 11
 #104
 01
 #117
-b101 [
+b101 \
 1%
 11
 #130
 01
 #143
-b0 [
+b0 \
 0%
 11
 #145
 16
 b11100 2
 b11100 ?
-1]
-b100110101001111010101100010000001000001001011000010000001000010 ^
+1^
+b100110101001111010101100010000001000001001011000010000001000010 _
 #156
 01
 #169
-b1 [
+b1 \
 11
 #175
 06
@@ -211,38 +213,38 @@ b1000010 @
 #182
 01
 #195
-b11 [
+b11 \
 11
 #208
 01
 #221
-b100 [
+b100 \
 b10 .
-b10 Q
+b10 R
 b1000010 &
-b1000010 X
+b1000010 Y
 b11 '
-b11 W
+b11 X
 11
 #234
 01
 #247
-b101 [
+b101 \
 1%
 11
 #260
 01
 #273
-b0 [
+b0 \
 0%
 11
 #275
 16
-b100110101001111010101100010000001000001001011000010000000110000011110000011010000110010 ^
+b100110101001111010101100010000001000001001011000010000000110000011110000011010000110010 _
 #286
 01
 #299
-b1 [
+b1 \
 11
 #305
 06
@@ -253,44 +255,44 @@ b101000 ?
 #312
 01
 #325
-b10 [
+b10 \
 11
 #338
 01
 #351
-b11 [
+b11 \
 1#
 b1010001 $
-b1010001 Y
+b1010001 Z
 11
 #364
 01
 #377
-b100 [
+b100 \
 b0 &
-b0 X
+b0 Y
 b10 '
-b10 W
+b10 X
 1%
 11
 #390
 01
 #403
-b101 [
+b101 \
 11
 #416
 01
 #425
 16
-b1001101010011110101011000100000010000110010110000100000010110110011000001111000001101010011000101011101 ^
+b1001101010011110101011000100000010000110010110000100000010110110011000001111000001101010011000101011101 _
 #429
-b0 [
+b0 \
 0%
 11
 #442
 01
 #455
-b1 [
+b1 \
 0#
 06
 11
@@ -301,30 +303,65 @@ b110100 ?
 #468
 01
 #481
-b11 [
+b11 \
 11
 #494
 01
 #507
-b100 [
+b100 \
 b100010 "
-b100010 Z
+b100010 [
 1!
 b1110101 $
-b1110101 Y
+b1110101 Z
 11
 #520
 01
 #533
-b101 [
+b101 \
 11
 #546
 01
 #559
-b0 [
+b0 \
 0!
 11
 #572
 01
 #575
-b1001101010011110101011000100000010110110011000001111000001101010011000101011101001011000010000001000010 ^
+16
+b1001101010011110101011000100000010110110011000001111000001101010011000101011101001011000010000001000010 _
+#585
+b1 \
+11
+#598
+01
+#605
+b10000001 2
+b10000001 ?
+06
+#611
+b11 \
+11
+#624
+01
+#637
+b100010 )
+b100010 W
+b10001 *
+b10001 V
+b0 0
+b0 P
+11
+#650
+01
+#663
+11
+#676
+01
+#689
+11
+#702
+01
+#705
+b100000101001110010001000010000001000001001011000010000001000010 _
