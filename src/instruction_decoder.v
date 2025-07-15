@@ -36,7 +36,7 @@ module decoder (
     output reg [7:0] sram_addr,
     output reg sram_rd_en,
     output reg sram_wr_en,
-    output reg sram_wr_data
+    output reg sram_wr_data,
 
     //To LCD Driver
     output reg [7:0] lcd_data,
@@ -84,7 +84,7 @@ module decoder (
                     reg_wr_en <= 0;
                     state <= STATE_FETCH_START;
                 end 
-                STATE_FETCH_DONE: begin
+                STATE_FETCH_START: begin
                     pc_hlt <= 0;
                     state <= STATE_DECODE;
                 end
@@ -107,7 +107,7 @@ module decoder (
                 end
                 STATE_RETRIEVE_DONE: begin
                     sram_rd_en <= 0;
-                    state <= STATE_EXECUTE
+                    state <= STATE_EXECUTE;
                 end
                 STATE_EXECUTE: begin
                     case (instr_byte[7:4])
@@ -120,7 +120,6 @@ module decoder (
                                 2'b01 : reg_wr_data <= reg_b;
                                 2'b10 : reg_wr_data <= reg_c;
                                 2'b11 : reg_wr_data <= reg_d;
-                                default: 
                             endcase
                         end 
                         //MOV R, IMM
@@ -135,11 +134,8 @@ module decoder (
                             reg_wr_data <= temp_sram_data;
                             reg_wr_en <= 1;
                         end
-                        default: 
                     endcase
                 end
-
-                default: 
             endcase
         end
     end
