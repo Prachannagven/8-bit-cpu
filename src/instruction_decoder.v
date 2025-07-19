@@ -70,6 +70,8 @@ module decoder (
             sram_wr_en <= 0;
             reg_wr_en <= 0;
             instr_size <= 1;
+            jmp_addr <= 0;
+            jmp_en <= 0;
         end else begin
             case (state)
                 STATE_INIT: begin
@@ -77,7 +79,12 @@ module decoder (
                     sram_rd_en <= 0;
                     sram_wr_en <= 0;
                     reg_wr_en <= 0;
+                    instr_size <= 1;
+                    jmp_addr <= 0;
+                    jmp_en <= 0;
                     if(cmd_start) begin
+                        //IMPORTANT: THIS MIGHT CAUSE BAD PC MESSING UP 
+                        pc_hlt <= 1;
                         state <= STATE_FETCH;                        
                     end
                     else begin
@@ -98,6 +105,7 @@ module decoder (
                         4'b1101: state <= STATE_DECODE;
                         4'b1110: state <= STATE_DECODE;
                         4'b1111: state <= STATE_DECODE;
+                        4'b0101: state <= STATE_DECODE;
                         default: state <= STATE_INIT;
                     endcase
                 end
@@ -162,6 +170,7 @@ module decoder (
                                 2'b10: op_2 <= reg_c;
                                 2'b11: op_2 <= reg_d;
                             endcase
+                            state <= STATE_EXECUTE_START;
                         end
                         4'b1001: begin  //OR R1, R2
                             alu_inst <= 3'b001;
@@ -177,6 +186,7 @@ module decoder (
                                 2'b10: op_2 <= reg_c;
                                 2'b11: op_2 <= reg_d;
                             endcase
+                            state <= STATE_EXECUTE_START;
                         end
                         4'b1010: begin  //XOR R1, R2
                             alu_inst <= 3'b010;
@@ -192,6 +202,7 @@ module decoder (
                                 2'b10: op_2 <= reg_c;
                                 2'b11: op_2 <= reg_d;
                             endcase
+                            state <= STATE_EXECUTE_START;
                         end
                         4'b1011: begin  //NOT R1
                             alu_inst <= 3'b011;
@@ -201,6 +212,8 @@ module decoder (
                                 2'b10: op_1 <= reg_c;
                                 2'b11: op_1 <= reg_d;
                             endcase
+                            op_2 <= 8'h0;
+                            state <= STATE_EXECUTE_START;
                         end
                         4'b1100: begin  //ADD R1, R2
                             alu_inst <= 3'b100;
@@ -210,12 +223,13 @@ module decoder (
                                 2'b10: op_1 <= reg_c;
                                 2'b11: op_1 <= reg_d;
                             endcase
-                            case (instr_byte[3:2])
+                            case (instr_byte[1:0])
                                 2'b00: op_2 <= reg_a;
                                 2'b01: op_2 <= reg_b;
                                 2'b10: op_2 <= reg_c;
                                 2'b11: op_2 <= reg_d;
                             endcase
+                            state <= STATE_EXECUTE_START;
                         end
                         4'b1101: begin  //SUB R1, R2
                             alu_inst <= 3'b101;
@@ -225,14 +239,15 @@ module decoder (
                                 2'b10: op_1 <= reg_c;
                                 2'b11: op_1 <= reg_d;
                             endcase
-                            case (instr_byte[3:2])
+                            case (instr_byte[1:0])
                                 2'b00: op_2 <= reg_a;
                                 2'b01: op_2 <= reg_b;
                                 2'b10: op_2 <= reg_c;
                                 2'b11: op_2 <= reg_d;
                             endcase
+                            state <= STATE_EXECUTE_START;
                         end
-                        4'b1101: begin  //INC R1
+                        4'b1110: begin  //INC R1
                             alu_inst <= 3'b110;
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
@@ -240,14 +255,56 @@ module decoder (
                                 2'b10: op_1 <= reg_c;
                                 2'b11: op_1 <= reg_d;
                             endcase
+                            op_2 <= 8'h0;
+                            state <= STATE_EXECUTE_START;
                         end
                         4'b1111: begin  //DEC R1
-                            alu_inst <= 3'b1111;
+                            alu_inst <= 3'b111;
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
                                 2'b10: op_1 <= reg_c;
                                 2'b11: op_1 <= reg_d;
+                            endcase
+                            op_2 <= 8'h0;
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b0101: begin  //ALL JMP COMMANDS
+                            case(instr_byte[1:0])
+                                2'b00: begin        //JMP [ADDR]
+                                    jmp_addr <= operand1;
+                                    state <= STATE_EXECUTE_START;
+                                end
+                                2'b01: begin        //JZ [ADDR]
+                                    if(reg_flags[1]) begin
+                                        jmp_addr <= operand1;
+                                        state <= STATE_EXECUTE_START;
+                                    end
+                                    else begin
+                                        instr_size <= 2;
+                                        state = STATE_EXECUTE_START;
+                                    end
+                                end
+                                2'b10: begin        //JNZ [ADDR]
+                                    if(!reg_flags[1]) begin
+                                        jmp_addr <= operand1;
+                                        state <= STATE_EXECUTE_START;
+                                    end
+                                    else begin
+                                        instr_size <= 2;
+                                        state = STATE_EXECUTE_START;
+                                    end
+                                end
+                                2'b11: begin        //JOV [ADDR]
+                                    if(reg_flags[0]) begin
+                                        jmp_addr <= operand1;
+                                        state <= STATE_EXECUTE_START;
+                                    end
+                                    else begin
+                                        instr_size <= 2;
+                                        state = STATE_EXECUTE_START;
+                                    end
+                                end
                             endcase
                         end
                     endcase
@@ -295,7 +352,14 @@ module decoder (
                         4'b1111: begin  // DEC R
                             alu_en <= 1;
                         end
-                        
+                        4'b0101: begin
+                            case (instr_byte[1:0])
+                                2'b00: jmp_en <=1;
+                                2'b01: jmp_en <= reg_flags[1];
+                                2'b10: jmp_en <= reg_flags[1];
+                                2'b11: jmp_en <= reg_flags[1];
+                            endcase
+                        end
                     endcase
                     state <= STATE_EXECUTE_END;
                 end
@@ -337,6 +401,14 @@ module decoder (
                         end
                         4'b1111: begin  // DEC R
                             alu_en <= 0;
+                        end
+                        4'b0101: begin
+                            case (instr_byte[1:0])
+                                2'b00: jmp_en <= 0;
+                                2'b01: jmp_en <= 0;
+                                2'b10: jmp_en <= 0;
+                                2'b11: jmp_en <= 0;
+                            endcase
                         end
                     endcase
                     state <= STATE_INIT;
