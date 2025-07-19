@@ -4,6 +4,7 @@ module pram(
     input               wre,
     input [8:0]         addr,
     input [7:0]         data_in,
+    
     output [7:0]        data_out_0,
     output [7:0]        data_out_1,
     output [7:0]        data_out_2,    

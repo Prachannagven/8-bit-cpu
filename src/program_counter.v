@@ -1,5 +1,5 @@
 module program_counter #(
-    parameter ADDR_WIDTH = 8
+    parameter ADDR_WIDTH = 9
 )(
     input wire clk,
     input wire rst,
@@ -16,18 +16,17 @@ module program_counter #(
             pc <= 0;
         end
         else if(!adv) begin
-                if (jump_en) begin
-                    pc <= jump_addr;
-                    end 
-                else begin
-                    case (instr_size)
-                        2'd1: pc <= pc + 1;
-                        2'd2: pc <= pc + 2;
-                        2'd3: pc <= pc + 3;
-                        default: pc <= pc + 1; // Fallback
-                    endcase
-                end 
-            end
+            if (jump_en) begin
+                pc <= jump_addr;
+            end 
+            else begin
+                case (instr_size)
+                    2'd1: pc <= pc + 1;
+                    2'd2: pc <= pc + 2;
+                    2'd3: pc <= pc + 3;
+                    default: pc <= pc + 1; // Fallback
+                endcase
+            end 
         end
     end
 

@@ -1,6 +1,6 @@
 module alu (
     // Inputs to the ALU
-    inptu wire clk,
+    input wire clk,
     input wire [7:0] a,      // Operand 1
     input wire [7:0] b,      // Operand 2
     input wire [2:0] op,     // Operation Code
