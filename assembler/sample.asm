@@ -1,3 +1,2 @@
-NOP
-WAIT 0x1243
-HLT
+MOV A, B
+MOV A, [0x42]

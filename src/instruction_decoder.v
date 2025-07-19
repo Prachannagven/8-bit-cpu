@@ -1,6 +1,4 @@
 module decoder (
-    //----- INPUTS TO DECODER -----//
-    //From System
     input wire clk,
     input wire sys_rst,
 
@@ -8,6 +6,7 @@ module decoder (
     input wire [7:0] instr_byte,
     input wire [7:0] operand1,
     input wire [7:0] operand2,
+    input wire cmd_start,
 
     //From LCD Display
     input wire lcd_done,
@@ -22,20 +21,20 @@ module decoder (
     //From ALU
     input wire [7:0] res,
 
-    //To and From SRAM
-    inout wire [7:0] sram_data,
+    //From SRAM
+    input wire [7:0] sram_rd_data,
 
-    //----- OUTPUTS FROM DECODER -----//
     //To Program Counter
-    output reg hlt,
+    output reg pc_hlt,
     output reg jmp_en,
     output reg [8:0] jmp_addr,
     output reg [1:0] instr_size,
 
     //To SRAM
     output reg [7:0] sram_addr,
-    output reg rd_en,
-    output reg wr_en,
+    output reg sram_rd_en,
+    output reg sram_wr_en,
+    output reg [7:0] sram_wr_data,
 
     //To LCD Driver
     output reg [7:0] lcd_data,
@@ -44,163 +43,375 @@ module decoder (
     output reg strt,
 
     //To Register Block
-    output reg [7:0] reg_data,
-    output reg [1:0] reg_addr,
+    output reg [7:0] reg_wr_data,
+    output reg [1:0] reg_wr_addr,
+    output reg reg_wr_en,
 
     //To ALU
     output reg [2:0] alu_inst,
     output reg [7:0] op_1,
-    output reg [7:0] op_2
+    output reg [7:0] op_2,
+    output reg alu_en
 );
-
-    // SRAM Tri-state control
-    reg [7:0] sram_data_out;
-    reg sram_drive;
-
-    assign sram_data = sram_drive ? sram_data_out : 8'bz;
-
-    // FSM States
-    localparam STATE_FETCH     = 3'b000;
-    localparam STATE_DECODE    = 3'b001;
-    localparam STATE_WAIT_LCD  = 3'b010;
-    localparam STATE_HALT      = 3'b011;
+    localparam STATE_INIT           = 3'd0;
+    localparam STATE_FETCH          = 3'd1;
+    localparam STATE_RETRIEVE       = 3'd2;
+    localparam STATE_DECODE         = 3'd3;
+    localparam STATE_EXECUTE_START  = 3'd4;
+    localparam STATE_EXECUTE_END    = 3'd5;
 
     reg [2:0] state;
 
     always @(posedge clk or posedge sys_rst) begin
         if (sys_rst) begin
-            state <= STATE_FETCH;
-            hlt <= 0;
-            jmp_en <= 0;
+            state <= STATE_INIT;
+            pc_hlt <= 0;
+            sram_rd_en <= 0;
+            sram_wr_en <= 0;
+            reg_wr_en <= 0;
             instr_size <= 1;
+            jmp_addr <= 0;
+            jmp_en <= 0;
         end else begin
             case (state)
-                STATE_FETCH: begin
-                    // Reset control signals
-                    hlt <= 0;
-                    jmp_en <= 0;
-                    alu_inst <= 3'b000;
+                STATE_INIT: begin
+                    pc_hlt <= 0;
+                    sram_rd_en <= 0;
+                    sram_wr_en <= 0;
+                    reg_wr_en <= 0;
                     instr_size <= 1;
-                    rd_en <= 0;
-                    wr_en <= 0;
-                    strt <= 0;
-                    sram_drive <= 0;
+                    jmp_addr <= 0;
+                    jmp_en <= 0;
+                    if(cmd_start) begin
+                        //IMPORTANT: THIS MIGHT CAUSE BAD PC MESSING UP 
+                        pc_hlt <= 1;
+                        state <= STATE_FETCH;                        
+                    end
+                    else begin
+                        state <= STATE_INIT;
+                    end
+                end
+                STATE_FETCH: begin
+                    case (instr_byte[7:4])
+                        4'b0000: state <= STATE_DECODE;
+                        4'b0001: state <= STATE_DECODE;
+                        4'b0010: state <= STATE_RETRIEVE;
+                        4'b0011: state <= STATE_DECODE;
+                        4'b1000: state <= STATE_DECODE;
+                        4'b1001: state <= STATE_DECODE;
+                        4'b1010: state <= STATE_DECODE;
+                        4'b1011: state <= STATE_DECODE;
+                        4'b1100: state <= STATE_DECODE;
+                        4'b1101: state <= STATE_DECODE;
+                        4'b1110: state <= STATE_DECODE;
+                        4'b1111: state <= STATE_DECODE;
+                        4'b0101: state <= STATE_DECODE;
+                        default: state <= STATE_INIT;
+                    endcase
+                end
 
+                STATE_RETRIEVE: begin
+                    if (instr_byte[7:4] == 4'b0010) begin
+                        sram_addr <= operand1;
+                        sram_rd_en <= 1;
+                    end
                     state <= STATE_DECODE;
                 end
 
                 STATE_DECODE: begin
                     case (instr_byte[7:4])
                         4'b0000: begin // MOV R1, R2
-                            reg_addr <= instr_byte[3:2];
+                            reg_wr_addr <= instr_byte[3:2];
                             case (instr_byte[1:0])
-                                2'b00: reg_data <= reg_a;
-                                2'b01: reg_data <= reg_b;
-                                2'b10: reg_data <= reg_c;
-                                2'b11: reg_data <= reg_d;
+                                2'b00: reg_wr_data <= reg_a;
+                                2'b01: reg_wr_data <= reg_b;
+                                2'b10: reg_wr_data <= reg_c;
+                                2'b11: reg_wr_data <= reg_d;
                             endcase
                             instr_size <= 1;
+                            state <= STATE_EXECUTE_START;
                         end
-
                         4'b0001: begin // MOV R, IMM
-                            reg_addr <= instr_byte[3:2];
-                            reg_data <= operand1;
+                            reg_wr_addr <= instr_byte[3:2];
+                            reg_wr_data <= operand1;
                             instr_size <= 2;
+                            state <= STATE_EXECUTE_START;
                         end
-
                         4'b0010: begin // MOV R, [ADDR]
-                            reg_addr <= instr_byte[3:2];
-                            sram_addr <= operand1;
-                            rd_en <= 1;
+                            reg_wr_en <= 1;
+                            reg_wr_addr <= instr_byte[3:2];
+                            reg_wr_data <= sram_rd_data;
                             instr_size <= 2;
+                            state <= STATE_EXECUTE_START;
                         end
-
                         4'b0011: begin // MOV [ADDR], R
                             sram_addr <= operand1;
+                            sram_wr_en <= 1;
                             case (instr_byte[3:2])
-                                2'b00: sram_data_out <= reg_a;
-                                2'b01: sram_data_out <= reg_b;
-                                2'b10: sram_data_out <= reg_c;
-                                2'b11: sram_data_out <= reg_d;
+                                2'b00: sram_wr_data <= reg_a;
+                                2'b01: sram_wr_data <= reg_b;
+                                2'b10: sram_wr_data <= reg_c;
+                                2'b11: sram_wr_data <= reg_d;
                             endcase
-                            sram_drive <= 1;
-                            wr_en <= 1;
                             instr_size <= 2;
+                            state <= STATE_EXECUTE_START;
                         end
-
-                        4'b0100: begin // PRNT
-                            if (instr_byte[1:0] == 2'b00) begin // PRNT REG
-                                case (instr_byte[3:2])
-                                    2'b00: lcd_data <= reg_a;
-                                    2'b01: lcd_data <= reg_b;
-                                    2'b10: lcd_data <= reg_c;
-                                    2'b11: lcd_data <= reg_d;
-                                endcase
-                                strt <= 1;
-                                loc_req <= 1;
-                                data_loc <= reg_a;
-                                state <= STATE_WAIT_LCD;
-                            end else begin // PRNT [ADDR]
-                                sram_addr <= operand1;
-                                rd_en <= 1;
-                                loc_req <= 1;
-                                data_loc <= reg_a;
-                                strt <= 1;
-                                state <= STATE_WAIT_LCD;
-                            end
-                            instr_size <= 2;
-                        end
-
-                        4'b0101: begin // Jumps
-                            jmp_addr <= operand1;
-                            instr_size <= 2;
-                            case (instr_byte[3:0])
-                                4'b0000: jmp_en <= 1;                      // JMP
-                                4'b0001: jmp_en <= reg_flags[0];          // JZ
-                                4'b0010: jmp_en <= ~reg_flags[0];         // JNZ
-                                4'b0011: jmp_en <= reg_flags[1];          // JOV
-                            endcase
-                        end
-
-                        4'b0110: begin
-                            instr_size <= 1; // NOP
-                        end
-
-                        4'b0111: begin
-                            if (instr_byte[3:0] == 4'b0000)
-                                hlt <= 1; // HLT
-                            else if (instr_byte[3:0] == 4'b1111)
-                                instr_size <= 3; // WAIT
-                        end
-
-                        4'b1000: begin // AND R1, R2
+                        4'b1000: begin  //AND R1, R2
                             alu_inst <= 3'b000;
-                            op_1 <= (instr_byte[3:2] == 2'b00) ? reg_a :
-                                    (instr_byte[3:2] == 2'b01) ? reg_b :
-                                    (instr_byte[3:2] == 2'b10) ? reg_c : reg_d;
-                            op_2 <= (instr_byte[1:0] == 2'b00) ? reg_a :
-                                    (instr_byte[1:0] == 2'b01) ? reg_b :
-                                    (instr_byte[1:0] == 2'b10) ? reg_c : reg_d;
-                            reg_addr <= instr_byte[3:2];
-                            reg_data <= res;
-                            instr_size <= 1;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            case (instr_byte[1:0])
+                                2'b00: op_2 <= reg_a;
+                                2'b01: op_2 <= reg_b;
+                                2'b10: op_2 <= reg_c;
+                                2'b11: op_2 <= reg_d;
+                            endcase
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1001: begin  //OR R1, R2
+                            alu_inst <= 3'b001;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            case (instr_byte[1:0])
+                                2'b00: op_2 <= reg_a;
+                                2'b01: op_2 <= reg_b;
+                                2'b10: op_2 <= reg_c;
+                                2'b11: op_2 <= reg_d;
+                            endcase
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1010: begin  //XOR R1, R2
+                            alu_inst <= 3'b010;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            case (instr_byte[1:0])
+                                2'b00: op_2 <= reg_a;
+                                2'b01: op_2 <= reg_b;
+                                2'b10: op_2 <= reg_c;
+                                2'b11: op_2 <= reg_d;
+                            endcase
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1011: begin  //NOT R1
+                            alu_inst <= 3'b011;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            op_2 <= 8'h0;
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1100: begin  //ADD R1, R2
+                            alu_inst <= 3'b100;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            case (instr_byte[1:0])
+                                2'b00: op_2 <= reg_a;
+                                2'b01: op_2 <= reg_b;
+                                2'b10: op_2 <= reg_c;
+                                2'b11: op_2 <= reg_d;
+                            endcase
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1101: begin  //SUB R1, R2
+                            alu_inst <= 3'b101;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            case (instr_byte[1:0])
+                                2'b00: op_2 <= reg_a;
+                                2'b01: op_2 <= reg_b;
+                                2'b10: op_2 <= reg_c;
+                                2'b11: op_2 <= reg_d;
+                            endcase
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1110: begin  //INC R1
+                            alu_inst <= 3'b110;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            op_2 <= 8'h0;
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b1111: begin  //DEC R1
+                            alu_inst <= 3'b111;
+                            case (instr_byte[3:2])
+                                2'b00: op_1 <= reg_a;
+                                2'b01: op_1 <= reg_b;
+                                2'b10: op_1 <= reg_c;
+                                2'b11: op_1 <= reg_d;
+                            endcase
+                            op_2 <= 8'h0;
+                            state <= STATE_EXECUTE_START;
+                        end
+                        4'b0101: begin  //ALL JMP COMMANDS
+                            case(instr_byte[1:0])
+                                2'b00: begin        //JMP [ADDR]
+                                    jmp_addr <= operand1;
+                                    state <= STATE_EXECUTE_START;
+                                end
+                                2'b01: begin        //JZ [ADDR]
+                                    if(reg_flags[1]) begin
+                                        jmp_addr <= operand1;
+                                        state <= STATE_EXECUTE_START;
+                                    end
+                                    else begin
+                                        instr_size <= 2;
+                                        state = STATE_EXECUTE_START;
+                                    end
+                                end
+                                2'b10: begin        //JNZ [ADDR]
+                                    if(!reg_flags[1]) begin
+                                        jmp_addr <= operand1;
+                                        state <= STATE_EXECUTE_START;
+                                    end
+                                    else begin
+                                        instr_size <= 2;
+                                        state = STATE_EXECUTE_START;
+                                    end
+                                end
+                                2'b11: begin        //JOV [ADDR]
+                                    if(reg_flags[0]) begin
+                                        jmp_addr <= operand1;
+                                        state <= STATE_EXECUTE_START;
+                                    end
+                                    else begin
+                                        instr_size <= 2;
+                                        state = STATE_EXECUTE_START;
+                                    end
+                                end
+                            endcase
+                        end
+                    endcase
+                end
+
+                STATE_EXECUTE_START: begin
+                    case (instr_byte[7:4])
+                        4'b0000: begin   // MOV R1, R2
+                            reg_wr_en <= 1;
                         end
 
-                        // TODO: Add other ALU operations like OR, XOR, ADD, SUB, etc.
+                        4'b0001: begin  // MOV R, IMM
+                            reg_wr_en <= 1;
+                        end
 
+                        4'b0010: begin  // MOV R, [ADDR]
+                            reg_wr_en <= 1;
+                        end
+
+                        4'b0011: begin  // MOV [ADDR], R
+                            sram_wr_en <= 1;
+                        end
+
+                        4'b1000: begin  // AND R1, R2
+                            alu_en <= 1;
+                        end
+                        4'b1001: begin  // OR R1, R2
+                            alu_en <= 1;
+                        end
+                        4'b1010: begin  // XOR R1, R2
+                            alu_en <= 1;
+                        end
+                        4'b1011: begin  // NOT R
+                            alu_en <= 1;
+                        end
+                        4'b1100: begin  // ADD R1, R2
+                            alu_en <= 1;
+                        end
+                        4'b1101: begin  // SUB R1, R2
+                            alu_en <= 1;
+                        end
+                        4'b1110: begin  // INC R
+                            alu_en <= 1;
+                        end
+                        4'b1111: begin  // DEC R
+                            alu_en <= 1;
+                        end
+                        4'b0101: begin
+                            case (instr_byte[1:0])
+                                2'b00: jmp_en <=1;
+                                2'b01: jmp_en <= reg_flags[1];
+                                2'b10: jmp_en <= reg_flags[1];
+                                2'b11: jmp_en <= reg_flags[1];
+                            endcase
+                        end
                     endcase
-                    state <= STATE_FETCH;
+                    state <= STATE_EXECUTE_END;
                 end
 
-                STATE_WAIT_LCD: begin
-                    if (lcd_done) begin
-                        strt <= 0;
-                        state <= STATE_FETCH;
-                    end
-                end
+                STATE_EXECUTE_END: begin
+                    case (instr_byte[7:4])
+                        4'b0000: begin  // MOV R1, R2
+                            reg_wr_en <= 0;
+                        end
 
-                STATE_HALT: begin
-                    hlt <= 1;
+                        4'b0001: begin  // MOV R, IMM
+                            reg_wr_en <= 0;
+                        end
+
+                        4'b0010: begin  // MOV R, [ADDR]
+                            reg_wr_en <= 0;
+                        end
+
+                        4'b1000: begin  // AND R1, R2
+                            alu_en <= 0;
+                        end
+                        4'b1001: begin  // OR R1, R2
+                            alu_en <= 0;
+                        end
+                        4'b1010: begin  // XOR R1, R2
+                            alu_en <= 0;
+                        end
+                        4'b1011: begin  // NOT R
+                            alu_en <= 0;
+                        end
+                        4'b1100: begin  // ADD R1, R2
+                            alu_en <= 0;
+                        end
+                        4'b1101: begin  // SUB R1, R2
+                            alu_en <= 0;
+                        end
+                        4'b1110: begin  // INC R
+                            alu_en <= 0;
+                        end
+                        4'b1111: begin  // DEC R
+                            alu_en <= 0;
+                        end
+                        4'b0101: begin
+                            case (instr_byte[1:0])
+                                2'b00: jmp_en <= 0;
+                                2'b01: jmp_en <= 0;
+                                2'b10: jmp_en <= 0;
+                                2'b11: jmp_en <= 0;
+                            endcase
+                        end
+                    endcase
+                    state <= STATE_INIT;
                 end
             endcase
         end
