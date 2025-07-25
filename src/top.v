@@ -97,6 +97,8 @@ module cpu_top (
         .zero(alu_zero),
         .ovf(alu_ovf)
     );
+
+    //Small change for commit
 //--------------- END ALL INSTANTIATIONS ---------------//
 
 //First step in the PC is initialization. This occurs every time the restart button is pressed.
