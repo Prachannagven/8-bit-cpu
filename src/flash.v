@@ -5,8 +5,8 @@ module flashNav #(
     //Inputs from system or CPU
     input clk,                              //Input 27MHz Clock
     input wire flash_MISO,                  //SPI Data in from the flash chip to the tang nano
-    input btn1,                             //To allow for reset and start
-    input btn2,
+    input rst,                             //To allow for reset and start
+    input strt,
 
     //Outputs to the flash chip on the tang nano 9k
     output reg flash_MOSI = 0,              //SPI data out from the tang nano to the flash chip
