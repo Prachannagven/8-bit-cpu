@@ -1,2 +1,4 @@
 MOV A, B
-MOV A, [0x42]
+MOV C, 0x75
+MOV [0x52], D
+MOV A, [0x01]

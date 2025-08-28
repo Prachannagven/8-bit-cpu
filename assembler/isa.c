@@ -44,8 +44,59 @@ uint8_t register_code(char reg){
 }
 
 int assemble(const char *filename, const char *output){
-    //Opening the file I want to assemble and the output file so I can put my characters
+    // Label support: first pass to collect labels and their addresses
+    typedef struct { char name[32]; int addr; } label_t;
+    label_t labels[256];
+    int label_count = 0;
+
     FILE *fin = fopen(filename, "r");
+    if(!fin){
+        perror("Error opening the file");
+        return 1;
+    }
+
+    char line[MAX_LINE_LEN];
+    int pc = 0; // program counter for address
+    while(fgets(line, sizeof(line), fin)){
+        char op[16] = {0};
+        char arg1[16] = {0};
+        char arg2[16] = {0};
+        // Check for label (format: label:)
+        char *colon = strchr(line, ':');
+        if(colon && (colon - line) < 32) {
+            int len = colon - line;
+            strncpy(labels[label_count].name, line, len);
+            labels[label_count].name[len] = '\0';
+            labels[label_count].addr = pc;
+            label_count++;
+            continue;
+        }
+        if(sscanf(line, "%s %[^,], %s", op, arg1, arg2) < 1){
+            continue;
+        }
+        // Estimate instruction length for PC increment
+        if(strcmp(op, "MOV") == 0) {
+            if(ARG1_IS_ADDRS || ARG2_IS_ADDRS || (arg2[0] == '0' && arg2[1] == 'x')) pc += 2;
+            else if(ARG1_IS_A_REG && ARG2_IS_A_REG) pc += 1;
+            else pc += 2;
+        } else if(strcmp(op, "PRNT") == 0) {
+            if(arg1[0] == '[') pc += 2; else pc += 1;
+        } else if(op[0] == 'J') {
+            pc += 2;
+        } else if(strcmp(op, "HLT") == 0 || strcmp(op, "NOP") == 0) {
+            pc += 1;
+        } else if(strcmp(op, "WAIT") == 0) {
+            pc += 3;
+        } else if(strcmp(op, "AND") == 0 || strcmp(op, "OR") == 0 || strcmp(op, "XOR") == 0 || strcmp(op, "ADD") == 0 || strcmp(op, "SUB") == 0) {
+            pc += 1;
+        } else if(strcmp(op, "NOT") == 0 || strcmp(op, "INC") == 0 || strcmp(op, "DEC") == 0) {
+            pc += 1;
+        }
+    }
+    fclose(fin);
+
+    // Second pass: assemble, resolve labels
+    fin = fopen(filename, "r");
     FILE *fout = fopen(output, "wb");
     
     //Checking for error
@@ -53,18 +104,15 @@ int assemble(const char *filename, const char *output){
         perror("Error opening the file");
         return 1;
     }
-
-    //This is my buffer when reading a line
-    char line[MAX_LINE_LEN];
-
-    //Since I want to read the whole file, this loop will allow me to go through until the EOF
+    LINE_NUM = 1;
     while(fgets(line, sizeof(line), fin)){
         //Temporary buffers for each of the components in the assembly. Not all of them will always be used
         char op[16] = {0};
         char arg1[16] = {0};
         char arg2[16] = {0};
-
-        //Skipping if blank line
+        // Skip label lines
+        char *colon = strchr(line, ':');
+        if(colon && (colon - line) < 32) { LINE_NUM++; continue; }
         if(sscanf(line, "%s %[^,], %s", op, arg1, arg2) < 1){
             LINE_NUM++; 
             continue;
@@ -79,15 +127,14 @@ int assemble(const char *filename, const char *output){
         if(strcmp(op, "MOV") == 0){
             //MOV [ADDR], REG
             if(ARG1_IS_ADDRS){
-                uint8_t reg = register_code(arg2[0]);                       //Converting the reg into reg code
+                uint8_t reg = register_code(arg2[0]);
                 uint8_t addr = (uint8_t) strtol(arg1+1, NULL, 0);
                 bytes[0] = MOV_ADR_REG | (reg << 2);
                 bytes[1] = addr;
                 len = 2;
             }
-            //MOV REG, [ADDR]
             else if(ARG2_IS_ADDRS){
-                uint8_t reg = register_code(arg1[0]);                       //Converting the reg into reg code
+                uint8_t reg = register_code(arg1[0]);
                 uint8_t addr = (uint8_t) strtol(arg2+1, NULL, 0);
                 bytes[0] = MOV_REG_ADR | (reg << 2);
                 bytes[1] = addr;
@@ -135,9 +182,27 @@ int assemble(const char *filename, const char *output){
                 printf("Invalid PRNT command syntax at line %d. Valid usages: \n \t PRNT A \n \t PRNT [0x40] \n", LINE_NUM);
                 break;
             }
-        }    
-        else if ((op[0] == 'J' ) && ARG1_IS_ADDRS){
-            //JMP [0x40] (unconditional jump)
+        }
+        else if (op[0] == 'J'){
+            // Support both [0x40] and label
+            uint8_t addr = 0xFF;
+            int is_label = 0;
+            if(ARG1_IS_ADDRS){
+                addr = (uint8_t) strtol(arg1+1, NULL, 0);
+            } else {
+                // Try to resolve as label
+                for(int i=0; i<label_count; ++i){
+                    if(strcmp(arg1, labels[i].name) == 0){
+                        addr = (uint8_t) labels[i].addr;
+                        is_label = 1;
+                        break;
+                    }
+                }
+                if(!is_label){
+                    printf("Unknown label '%s' at line %d\n", arg1, LINE_NUM);
+                    break;
+                }
+            }
             if(strcmp(op, "JMP") == 0){
                 uint8_t addr = (uint8_t) strtol(arg1+1, NULL, 0);
                 bytes[0] = JMP_UNIBBLE | 0x00;
@@ -146,28 +211,25 @@ int assemble(const char *filename, const char *output){
             }
             //JZ [0x40] (jump if zero flag is set)
             else if(strcmp(op, "JZ") == 0){
-                uint8_t addr = (uint8_t) strtol(arg1+1, NULL, 0);
                 bytes[0] = JMP_UNIBBLE | 0x01;
                 bytes[1] = addr;    
                 len = 2;       
             }
             //JNZ [0x40] (jump if zero flag is reset)
             else if (strcmp(op,  "JNZ") == 0){
-                uint8_t addr = (uint8_t) strtol(arg1+1, NULL, 0);
                 bytes[0] = JMP_UNIBBLE | 0x02;
                 bytes[1] = addr;    
                 len = 2;  
             }
             //JOV [0x40] (jump if overflow flag)
             else if (strcmp(op, "JOV") == 0){
-                uint8_t addr = (uint8_t) strtol(arg1+1, NULL, 0);
                 bytes[0] = JMP_UNIBBLE | 0x03;
                 bytes[1] = addr;    
                 len = 2;  
             }
             else
             {
-                printf("Invalid jump command syntax at line %d. Valid usages: \n \t JMP [0x40] \n \t JZ [0x40]\n \t JNZ [0x40] \n \t JOV [0x40] \n", LINE_NUM);
+                printf("Invalid jump command syntax at line %d. Valid usages: \n \t JMP [0x40] | JMP label \n \t JZ [0x40] | JZ label\n \t JNZ [0x40] | JNZ label \n \t JOV [0x40] | JOV label \n", LINE_NUM);
                 break;
             }             
         }
@@ -300,7 +362,7 @@ int assemble(const char *filename, const char *output){
 
         }
         else{
-            printf("Invalid Command Detected. Skipping line %d", LINE_NUM);
+            printf("Invalid Command Detected. Skipping line %d \n", LINE_NUM);
         } 
         fwrite(bytes, 1, len, fout);
         LINE_NUM ++;
