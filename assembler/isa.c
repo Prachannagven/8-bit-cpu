@@ -43,6 +43,17 @@ uint8_t register_code(char reg){
     }
 }
 
+// Helper to trim whitespace from both ends of a string
+void trim(char *str) {
+    // Trim leading
+    char *start = str;
+    while(*start && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')) start++;
+    if(start != str) memmove(str, start, strlen(start)+1);
+    // Trim trailing
+    int len = strlen(str);
+    while(len > 0 && (str[len-1] == ' ' || str[len-1] == '\t' || str[len-1] == '\n' || str[len-1] == '\r')) str[--len] = 0;
+}
+
 int assemble(const char *filename, const char *output){
     // Label support: first pass to collect labels and their addresses
     typedef struct { char name[32]; int addr; } label_t;
@@ -58,6 +69,9 @@ int assemble(const char *filename, const char *output){
     char line[MAX_LINE_LEN];
     int pc = 0; // program counter for address
     while(fgets(line, sizeof(line), fin)){
+        // Remove comments: find '#' and terminate string there
+        char *comment = strchr(line, '#');
+        if(comment) *comment = '\0';
         char op[16] = {0};
         char arg1[16] = {0};
         char arg2[16] = {0};
@@ -67,6 +81,7 @@ int assemble(const char *filename, const char *output){
             int len = colon - line;
             strncpy(labels[label_count].name, line, len);
             labels[label_count].name[len] = '\0';
+            trim(labels[label_count].name);
             labels[label_count].addr = pc;
             label_count++;
             continue;
@@ -74,6 +89,7 @@ int assemble(const char *filename, const char *output){
         if(sscanf(line, "%s %[^,], %s", op, arg1, arg2) < 1){
             continue;
         }
+        trim(op); trim(arg1); trim(arg2);
         // Estimate instruction length for PC increment
         if(strcmp(op, "MOV") == 0) {
             if(ARG1_IS_ADDRS || ARG2_IS_ADDRS || (arg2[0] == '0' && arg2[1] == 'x')) pc += 2;
@@ -106,6 +122,9 @@ int assemble(const char *filename, const char *output){
     }
     LINE_NUM = 1;
     while(fgets(line, sizeof(line), fin)){
+        // Remove comments: find '#' and terminate string there
+        char *comment = strchr(line, '#');
+        if(comment) *comment = '\0';
         //Temporary buffers for each of the components in the assembly. Not all of them will always be used
         char op[16] = {0};
         char arg1[16] = {0};
@@ -117,6 +136,7 @@ int assemble(const char *filename, const char *output){
             LINE_NUM++; 
             continue;
         }
+        trim(op); trim(arg1); trim(arg2);
 
         //Now prepping the byte buffer to load into the machine code file
         uint8_t bytes[3] = {0};
@@ -187,6 +207,7 @@ int assemble(const char *filename, const char *output){
             // Support both [0x40] and label
             uint8_t addr = 0xFF;
             int is_label = 0;
+            trim(arg1);
             if(ARG1_IS_ADDRS){
                 addr = (uint8_t) strtol(arg1+1, NULL, 0);
             } else {
@@ -204,7 +225,6 @@ int assemble(const char *filename, const char *output){
                 }
             }
             if(strcmp(op, "JMP") == 0){
-                uint8_t addr = (uint8_t) strtol(arg1+1, NULL, 0);
                 bytes[0] = JMP_UNIBBLE | 0x00;
                 bytes[1] = addr;
                 len = 2;
