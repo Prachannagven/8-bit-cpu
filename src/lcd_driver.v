@@ -30,7 +30,6 @@ module lcd_driver (
 
     parameter HOLD_TIME = 16'd500;
     initial lcd_rs = 0;
-    assign lcd_rw = 0;
     initial lcd_en = 0;
 
     always @(posedge clk) begin

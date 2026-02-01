@@ -151,7 +151,7 @@ module decoder_tb;
         @(posedge clk);
         pc_strt <= 0;
         
-        repeat (3) @(posedge clk);
+        repeat (4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         #5;
         check("AND A, B", op_1 == reg_a && op_2 == reg_b && alu_inst == 3'b0);
 
@@ -163,7 +163,7 @@ module decoder_tb;
         @(posedge clk);
         pc_strt <= 0;
         
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         #5;
         check("OR C, D", op_1 == reg_c && op_2 == reg_d && alu_inst == 3'b001);
 
@@ -174,7 +174,7 @@ module decoder_tb;
         instr_byte <= 8'hA1;
         @(posedge clk);
         pc_strt <= 0;
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         check("XOR A, B", op_1 == reg_a && op_2 == reg_b && alu_inst == 3'b010);
 
         // === Test NOT C === //
@@ -183,7 +183,7 @@ module decoder_tb;
         instr_byte <= 8'hB8;
         @(posedge clk);
         pc_strt <= 0;
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         check("NOT C", op_1 == reg_c && op_2 == 8'h0 && alu_inst == 3'b011);
 
         // === Test ADD C, D === //
@@ -192,7 +192,7 @@ module decoder_tb;
         instr_byte <= 8'b11001011;
         @(posedge clk);
         pc_strt <= 0;
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         check("ADD C, D", op_1 == reg_c && op_2 == reg_d && alu_inst == 3'b100);
 
         // === Test SUB A, B === //
@@ -201,7 +201,7 @@ module decoder_tb;
         instr_byte <= 8'hD1;
         @(posedge clk);
         pc_strt <= 0;
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         check("SUB A, B", op_1 == reg_a && op_2 == reg_b && alu_inst == 3'b101);
         
         // === Test INC D === //
@@ -210,7 +210,7 @@ module decoder_tb;
         instr_byte <= 8'b11101100;
         @(posedge clk);
         pc_strt <= 0;
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         check("INC C", op_1 == reg_d && op_2 == 8'h0 && alu_inst == 3'b110);
 
         // === Test DEC C === //
@@ -219,7 +219,7 @@ module decoder_tb;
         instr_byte <= 8'hF8;
         @(posedge clk);
         pc_strt <= 0;
-        repeat(3) @(posedge clk);
+        repeat(4) @(posedge clk);  // Extra cycle for ALU_WAIT state
         check("DEC C", op_1 == reg_c && op_2 == 8'h0 && alu_inst == 3'b111);
 
         // === Test JMP [0x62] === //

@@ -58,6 +58,7 @@ module decoder (
     localparam STATE_RETRIEVE       = 3'd2;
     localparam STATE_DECODE         = 3'd3;
     localparam STATE_EXECUTE_START  = 3'd4;
+    localparam STATE_ALU_WAIT       = 3'd6;  // Wait for ALU result
     localparam STATE_EXECUTE_END    = 3'd5;
 
     reg [2:0] state;
@@ -72,6 +73,7 @@ module decoder (
             instr_size <= 1;
             jmp_addr <= 0;
             jmp_en <= 0;
+            alu_en <= 0;
         end else begin
             case (state)
                 STATE_INIT: begin
@@ -79,9 +81,10 @@ module decoder (
                     sram_rd_en <= 0;
                     sram_wr_en <= 0;
                     reg_wr_en <= 0;
-                    instr_size <= 1;
+                    // Don't reset instr_size here - PC needs to read the previous value
                     jmp_addr <= 0;
                     jmp_en <= 0;
+                    alu_en <= 0;
                     if(cmd_start) begin
                         //IMPORTANT: THIS MIGHT CAUSE BAD PC MESSING UP 
                         pc_hlt <= 1;
@@ -92,6 +95,8 @@ module decoder (
                     end
                 end
                 STATE_FETCH: begin
+                    // Set default instr_size at start of new instruction
+                    instr_size <= 1;
                     case (instr_byte[7:4])
                         4'b0000: state <= STATE_DECODE;
                         4'b0001: state <= STATE_DECODE;
@@ -158,6 +163,7 @@ module decoder (
                         end
                         4'b1000: begin  //AND R1, R2
                             alu_inst <= 3'b000;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -174,6 +180,7 @@ module decoder (
                         end
                         4'b1001: begin  //OR R1, R2
                             alu_inst <= 3'b001;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -190,6 +197,7 @@ module decoder (
                         end
                         4'b1010: begin  //XOR R1, R2
                             alu_inst <= 3'b010;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -206,6 +214,7 @@ module decoder (
                         end
                         4'b1011: begin  //NOT R1
                             alu_inst <= 3'b011;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -217,6 +226,7 @@ module decoder (
                         end
                         4'b1100: begin  //ADD R1, R2
                             alu_inst <= 3'b100;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -233,6 +243,7 @@ module decoder (
                         end
                         4'b1101: begin  //SUB R1, R2
                             alu_inst <= 3'b101;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -249,6 +260,7 @@ module decoder (
                         end
                         4'b1110: begin  //INC R1
                             alu_inst <= 3'b110;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -260,6 +272,7 @@ module decoder (
                         end
                         4'b1111: begin  //DEC R1
                             alu_inst <= 3'b111;
+                            reg_wr_addr <= instr_byte[3:2];  // Destination is R1
                             case (instr_byte[3:2])
                                 2'b00: op_1 <= reg_a;
                                 2'b01: op_1 <= reg_b;
@@ -361,6 +374,21 @@ module decoder (
                             endcase
                         end
                     endcase
+                    // Determine next state based on instruction type
+                    case (instr_byte[7:4])
+                        4'b1000, 4'b1001, 4'b1010, 4'b1011, 
+                        4'b1100, 4'b1101, 4'b1110, 4'b1111: begin
+                            // ALU operations need an extra cycle for result
+                            state <= STATE_ALU_WAIT;
+                        end
+                        default: begin
+                            state <= STATE_EXECUTE_END;
+                        end
+                    endcase
+                end
+
+                STATE_ALU_WAIT: begin
+                    // ALU result is now ready, proceed to writeback
                     state <= STATE_EXECUTE_END;
                 end
 
@@ -380,27 +408,43 @@ module decoder (
 
                         4'b1000: begin  // AND R1, R2
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1001: begin  // OR R1, R2
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1010: begin  // XOR R1, R2
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1011: begin  // NOT R
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1100: begin  // ADD R1, R2
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1101: begin  // SUB R1, R2
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1110: begin  // INC R
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b1111: begin  // DEC R
                             alu_en <= 0;
+                            reg_wr_data <= res;
+                            reg_wr_en <= 1;
                         end
                         4'b0101: begin
                             case (instr_byte[1:0])

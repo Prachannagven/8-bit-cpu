@@ -6,7 +6,7 @@ module register_map(
 	input wire [7:0] wr_data,
     input wire overflow_flag,
     input wire zero_flag,
-    input wire carry_flag
+    input wire carry_flag,
 	input wire wr_en,
 
 	//Outputs from the Register Map

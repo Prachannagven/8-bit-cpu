@@ -83,7 +83,7 @@ module flashNav #(
             end
             STATE_READ_DATA: begin
                 if (counter[0] == 1'd0) begin
-                    flashClk <= 0;
+                    flash_clk <= 0;
                     counter <= counter + 1;
                     if (counter[3:0] == 0 && counter > 0) begin
                         dataIn[(currentByteNum << 3)+:8] <= currentByteOut;
@@ -93,19 +93,18 @@ module flashNav #(
                     end
                 end
                 else begin
-                    flashClk <= 1;
-                    currentByteOut <= {currentByteOut[6:0], flashMiso};
+                    flash_clk <= 1;
+                    currentByteOut <= {currentByteOut[6:0], flash_MISO};
                     counter <= counter + 1;
                 end
             end
             STATE_DONE: begin
-                dataReady <= 1;
-                flashCs <= 1;
+                flash_cs <= 1;
                 dataInBuffer <= dataIn;
                 counter <= STARTUP_WAIT;
                 state <= STATE_INIT_POWER;
             end
-            default: 
+            default: state <= STATE_INIT_POWER;
         endcase
     end
 endmodule
