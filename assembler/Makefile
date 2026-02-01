@@ -1,5 +1,5 @@
-make: main.c isa.c
-        gcc -Wall -g main.c isa.c -o assembler
+assembler: main.c isa.c isa.h
+	gcc -Wall -g main.c isa.c -o assembler
 
 clean:
-		rm -f assembler
+	rm -f assembler
